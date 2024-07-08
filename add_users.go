@@ -7,7 +7,8 @@ import (
 	"io"
 	"os"
 
-	"gopkg.in/yaml.v3"
+	//"gopkg.in/yaml.v3"
+	"github.com/go-faster/yaml"
 )
 
 type Config struct {
