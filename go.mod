@@ -1,6 +1,6 @@
 module github.com/JeffreySmith/vmtools
 
-go 1.22.5
+go 1.22
 
 require (
 	github.com/go-faster/yaml v0.4.6
