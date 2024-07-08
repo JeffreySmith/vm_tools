@@ -168,3 +168,13 @@ additional_users:
 		t.Errorf("Got:\n%v, want:\n%v", got, want)
 	}
 }
+
+func TestEmptyYaml(t *testing.T) {
+	t.Parallel()
+	
+	config := vmtools.NewConfig()
+	err := config.WriteYaml()
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
