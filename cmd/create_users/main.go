@@ -3,16 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/JeffreySmith/vmtools"
 	"io"
 	"os"
 	"strings"
-	"github.com/JeffreySmith/vmtools"
 )
 
 func main() {
 	var OutputBuffer io.Writer = os.Stdout
 	var InputBuffer io.Reader
 	var header string
+	var ips []string
 	stdin := os.Stdin
 	f, err := stdin.Stat()
 
@@ -22,12 +23,23 @@ func main() {
 	header_path := flag.String("header", "", "Path to a file containing your yaml file header (optional).")
 	indentation_level := flag.Int("indent", 2, "Set the indentation level. Must be > 2")
 	flag.Parse()
-	if len(*ip) == 0 {
+
+	rest := flag.Args()
+
+	if len(rest) > 0 {
+		ips = rest
+	}
+	if len(*ip) == 0 && len(rest) == 0 {
 		fmt.Fprintf(os.Stderr, "You must supply at least 1 ip address\n\n")
+		fmt.Fprintf(os.Stderr, "Pass them either as a comma separated list after '-ip'\n")
+		fmt.Fprintf(os.Stderr, "or as a space separated list at the end of your arguments.\n\n")
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		flag.PrintDefaults()
 		os.Exit(1)
+	} else {
+		ips = append(strings.Split(*ip, ","), ips...)
 	}
+
 	if f.Size() > 0 {
 		InputBuffer = os.Stdin
 	} else if len(*input) > 0 {
@@ -45,8 +57,6 @@ func main() {
 			os.Exit(1)
 		}
 	}
-
-	ips := strings.Split(*ip, ",")
 
 	if len(*output) > 0 {
 		var err error
