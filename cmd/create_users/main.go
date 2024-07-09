@@ -25,7 +25,7 @@ func main() {
 	flag.Parse()
 
 	rest := flag.Args()
-
+	fmt.Println(len(rest))
 	if len(rest) > 0 {
 		ips = rest
 	}
@@ -37,7 +37,12 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	} else {
-		ips = append(strings.Split(*ip, ","), ips...)
+		if len(rest) > 0 && len(*ip) > 0 {
+			ips = append(strings.Split(*ip, ","), ips...)
+			
+		} else if len(rest) == 0 && len(*ip) > 0{
+			ips = strings.Split(*ip,",")
+		} 
 	}
 
 	if f.Size() > 0 {
