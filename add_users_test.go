@@ -156,6 +156,8 @@ func TestWriteYamlWithHeader(t *testing.T) {
 additional_users:
   - username: jupiter
     vm_ip: 10.90.9.9`
+	//The output contains an extra newline characters, so to match
+	//we need to add one here. Only a problem for the tests
 	want += "\n"
 
 	err = config.WriteYaml()
@@ -171,9 +173,51 @@ additional_users:
 
 func TestEmptyYaml(t *testing.T) {
 	t.Parallel()
-	
+
 	config := vmtools.NewConfig()
 	err := config.WriteYaml()
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestEmptyLineNotIncluded(t *testing.T) {
+	t.Parallel()
+	var b bytes.Buffer
+	ip := []string{"10.90.9.9"}
+	output := bufio.NewWriter(&b)
+	input := strings.NewReader("bobby\n\nmillybrown")
+	config := vmtools.NewConfig(vmtools.WithInput(input), vmtools.WithOutput(output))
+	config.GetUsers(ip)
+	_, err := config.GenerateYaml()
+	if err != nil {
+		t.Error(err)
+	}
+	//The output contains an extra newline characters, so to match
+	//we need to add one here. Only a problem for the tests
+	want := `additional_users:
+  - username: bobby
+    vm_ip: 10.90.9.9
+  - username: millybrown
+    vm_ip: 10.90.9.9`
+	want += "\n"
+
+	config.WriteYaml()
+	output.Flush()
+	got := b.String()
+	if got != want {
+		t.Errorf("Got:\n%vWant:\n%v", got, want)
+	}
+}
+
+func TestInputBufferEmpty(t *testing.T) {
+	t.Parallel()
+	ip := []string{"10.90.9.9"}
+	input := strings.NewReader("")
+	config := vmtools.NewConfig(vmtools.WithInput(input))
+
+	config.GetUsers(ip)
+	_, err := config.GenerateYaml()
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}
