@@ -54,7 +54,7 @@ func main() {
 	flag.Parse()
 
 	rest := flag.Args()
-	fmt.Println(len(rest))
+
 	if len(rest) > 0 {
 		ips = rest
 	}
