@@ -34,11 +34,11 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+
 	"io"
 	"os"
 	"strings"
-
-	"github.com/go-faster/yaml"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
