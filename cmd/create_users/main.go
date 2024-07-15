@@ -1,20 +1,21 @@
-/*BSD 3-Clause License
+/*
+BSD 3-Clause License
 
-Copyright (c) 2024, Jeffrey Smith
+# Copyright (c) 2024, Jeffrey Smith
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
-1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer.
+ 1. Redistributions of source code must retain the above copyright notice, this
+    list of conditions and the following disclaimer.
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
+ 2. Redistributions in binary form must reproduce the above copyright notice,
+    this list of conditions and the following disclaimer in the documentation
+    and/or other materials provided with the distribution.
 
-3. Neither the name of the copyright holder nor the names of its
-   contributors may be used to endorse or promote products derived from
-   this software without specific prior written permission.
+ 3. Neither the name of the copyright holder nor the names of its
+    contributors may be used to endorse or promote products derived from
+    this software without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -43,14 +44,12 @@ func main() {
 	var InputBuffer io.Reader
 	var header string
 	var ips []string
-	stdin := os.Stdin
-	f, err := stdin.Stat()
 
 	ip := flag.String("ip", "", "Comma separated list of ip addresses.")
 	output := flag.String("output", "", "Output file for generated yaml.")
 	input := flag.String("input", "", "Input file for user names.")
 	header_path := flag.String("header", "", "Path to a file containing your yaml file header (optional).")
-	indentation_level := flag.Int("indent", 2, "Set the indentation level. Must be > 2")
+	indentation_level := flag.Int("indent", 2, "Set the indentation level. Must be >= 2")
 	flag.Parse()
 
 	rest := flag.Args()
@@ -68,15 +67,13 @@ func main() {
 	} else {
 		if len(rest) > 0 && len(*ip) > 0 {
 			ips = append(strings.Split(*ip, ","), ips...)
-			
-		} else if len(rest) == 0 && len(*ip) > 0{
-			ips = strings.Split(*ip,",")
-		} 
+
+		} else if len(rest) == 0 && len(*ip) > 0 {
+			ips = strings.Split(*ip, ",")
+		}
 	}
 
-	if f.Size() > 0 {
-		InputBuffer = os.Stdin
-	} else if len(*input) > 0 {
+	if len(*input) > 0 {
 		var err error
 		InputBuffer, err = os.Open(*input)
 
@@ -85,11 +82,7 @@ func main() {
 			os.Exit(1)
 		}
 	} else {
-		InputBuffer, err = os.Open("users")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "You must suppy an input through stdin, a supplied file, or a 'users' file in this directory\n")
-			os.Exit(1)
-		}
+		InputBuffer = os.Stdin
 	}
 
 	if len(*output) > 0 {
@@ -122,12 +115,19 @@ func main() {
 		vmtools.SetIndent(*indentation_level),
 	)
 
-	config.GetUsers(ips)
+	err := config.CreateUsers(ips)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error while creating user: %v\n", err)
+		os.Exit(1)
+	}
 
 	_, err = config.GenerateYaml()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintf(os.Stderr, "Error generating yaml: %v\n", err)
 		os.Exit(1)
 	}
-	config.WriteYaml()
+	err = config.WriteYaml()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
+	}
 }

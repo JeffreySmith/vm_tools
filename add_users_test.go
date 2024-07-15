@@ -3,6 +3,7 @@ package vmtools_test
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -22,8 +23,11 @@ func TestIndent(t *testing.T) {
 }
 func TestCreateUser(t *testing.T) {
 	t.Parallel()
-	got := vmtools.CreateUser("alicebrown", "10.90.9.9")
+	got, err := vmtools.CreateUser("alicebrown", "10.90.9.9")
 	want := vmtools.User{Username: "alicebrown", Ip: "10.90.9.9"}
+	if err != nil {
+		t.Fatal(err)
+	}
 	if want != got {
 		t.Errorf("Got %v, want %v", got, want)
 	}
@@ -34,7 +38,7 @@ func TestCreateMultipleUsersSingleIP(t *testing.T) {
 	buf := strings.NewReader("bobby\nzoe")
 	config := vmtools.NewConfig(vmtools.WithInput(buf))
 	ips := []string{"10.90.9.9"}
-	config.GetUsers(ips)
+	config.CreateUsers(ips)
 	got := config.Users
 	want := []vmtools.User{
 		{Username: "bobby", Ip: "10.90.9.9"},
@@ -44,13 +48,71 @@ func TestCreateMultipleUsersSingleIP(t *testing.T) {
 		t.Error(cmp.Diff(got, want))
 	}
 }
+func TestCreateUserWithUpperCase(t *testing.T) {
+	t.Parallel()
+	tcs := []struct {
+		username, ip string
+		want         vmtools.User
+	}{
+		{
+			username: "JohnDoe",
+			ip:       "10.90.9.140",
+			want:     vmtools.User{Username: "johndoe", Ip: "10.90.9.140"},
+		},
+		{
+			username: "Bobby",
+			ip:       "10.90.9.140",
+			want:     vmtools.User{Username: "bobby", Ip: "10.90.9.140"},
+		},
+	}
+	for _, tc := range tcs {
+		name := fmt.Sprintf("%s to lowercase = %s", tc.username, tc.want.Username)
+		t.Run(name, func(t *testing.T) {
+			got, err := vmtools.CreateUser(tc.username, tc.ip)
+			if err != nil {
+				t.Errorf("Create user %v failed. Error: %v", tc.username, err)
+			}
+			if got != tc.want {
+				t.Errorf("Got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+func TestErrorOnUserWithNonAlphaChars(t *testing.T) {
+	t.Parallel()
+	tcs := []struct {
+		username, ip string
+		want         error
+	}{
+		{
+			username: "JohnDoe321",
+			ip:       "10.90.9.140",
+		},
+		{
+			username: "#^&Bobby",
+			ip:       "10.90.9.140",
+		},
+	}
+	for _, tc := range tcs {
+		name := fmt.Sprintf("%s should return error", tc.username)
+		t.Run(name, func(t *testing.T) {
+			_, err := vmtools.CreateUser(tc.username, tc.ip)
+			if err == nil {
+				t.Error("Expected error, got nil")
+			}
+		})
+	}
+}
 
 func TestCreateMultipleUsersMultipleIPs(t *testing.T) {
 	t.Parallel()
 	buf := strings.NewReader("bobby\nzoe")
 	config := vmtools.NewConfig(vmtools.WithInput(buf))
 	ips := []string{"10.90.9.9", "192.168.1.4"}
-	config.GetUsers(ips)
+	err := config.CreateUsers(ips)
+	if err != nil {
+		t.Fatal(err)
+	}
 	got := config.Users
 	want := []vmtools.User{
 		{Username: "bobby", Ip: "10.90.9.9"},
@@ -72,7 +134,10 @@ func TestCreateUsersFromFile(t *testing.T) {
 	}
 	config := vmtools.NewConfig(vmtools.WithInput(buf))
 	ips := []string{"10.90.9.9"}
-	config.GetUsers(ips)
+	err = config.CreateUsers(ips)
+	if err != nil {
+		t.Fatal(err)
+	}
 	got := config.Users
 	want := []vmtools.User{
 		{Username: "bobby", Ip: "10.90.9.9"},
@@ -91,7 +156,10 @@ func TestYamlOutput(t *testing.T) {
 
 	config := vmtools.NewConfig(vmtools.WithInput(users))
 	ips := []string{"10.90.9.9"}
-	config.GetUsers(ips)
+	err := config.CreateUsers(ips)
+	if err != nil {
+		t.Fatal(err)
+	}
 	yaml_string, err := config.GenerateYaml()
 	if err != nil {
 		t.Fatal(err)
@@ -116,8 +184,11 @@ func TestWriteYaml(t *testing.T) {
 	output := bufio.NewWriter(&b)
 	config := vmtools.NewConfig(vmtools.WithInput(input), vmtools.WithOutput(output))
 	ips := []string{"10.90.9.9"}
-	config.GetUsers(ips)
-	_, err := config.GenerateYaml()
+	err := config.CreateUsers(ips)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = config.GenerateYaml()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,8 +216,11 @@ func TestWriteYamlWithHeader(t *testing.T) {
 	header := "#This is my header.\n#There are many like it, but this one is mine."
 	config := vmtools.NewConfig(vmtools.WithInput(input), vmtools.WithOutput(output), vmtools.WithHeader(header))
 	ips := []string{"10.90.9.9"}
-	config.GetUsers(ips)
-	_, err := config.GenerateYaml()
+	err := config.CreateUsers(ips)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = config.GenerateYaml()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,8 +262,11 @@ func TestEmptyLineNotIncluded(t *testing.T) {
 	output := bufio.NewWriter(&b)
 	input := strings.NewReader("bobby\n\nmillybrown")
 	config := vmtools.NewConfig(vmtools.WithInput(input), vmtools.WithOutput(output))
-	config.GetUsers(ip)
-	_, err := config.GenerateYaml()
+	err := config.CreateUsers(ip)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = config.GenerateYaml()
 	if err != nil {
 		t.Error(err)
 	}
@@ -216,8 +293,11 @@ func TestInputBufferEmpty(t *testing.T) {
 	input := strings.NewReader("")
 	config := vmtools.NewConfig(vmtools.WithInput(input))
 
-	config.GetUsers(ip)
-	_, err := config.GenerateYaml()
+	err := config.CreateUsers(ip)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = config.GenerateYaml()
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}

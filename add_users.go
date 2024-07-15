@@ -34,11 +34,12 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-
+	"fmt"
+	"gopkg.in/yaml.v3"
 	"io"
 	"os"
+	"regexp"
 	"strings"
-	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
@@ -50,7 +51,7 @@ type Config struct {
 	Header     string
 	YamlString string
 }
-type Opt func(*Config)
+type opt func(*Config)
 
 type User struct {
 	Username string `yaml:"username"`
@@ -61,7 +62,7 @@ type AdditionalUsers struct {
 	Users []User `yaml:"additional_users"`
 }
 
-func NewConfig(opts ...Opt) *Config {
+func NewConfig(opts ...opt) *Config {
 	c := &Config{
 		Input:  os.Stdin,
 		Output: os.Stdout,
@@ -98,12 +99,18 @@ func (c *Config) GetIndent() int {
 	return c.indent
 }
 
-func CreateUser(username string, ip string) User {
-	u := User{Username: username, Ip: ip}
-	return u
+func CreateUser(username string, ip string) (User, error) {
+	r, _ := regexp.Compile("^[a-z]+$")
+	lowerCase := strings.ToLower(username)
+	if !r.MatchString(lowerCase) {
+		e := fmt.Sprintf("Invalid character in username '%v'. Special characters and numbers are not allowed.", username)
+		return User{}, errors.New(e)
+	}
+	u := User{Username: lowerCase, Ip: ip}
+	return u, nil
 }
 
-func (c *Config) GetUsers(ips []string) {
+func (c *Config) CreateUsers(ips []string) error {
 	var usernames []string
 	var users []User
 	scanner := bufio.NewScanner(c.Input)
@@ -116,14 +123,19 @@ func (c *Config) GetUsers(ips []string) {
 	}
 	user_length := len(usernames)
 	users = make([]User, user_length*len(ips))
-
+	var err error
 	for i := 0; i < len(users); i++ {
+
 		username := usernames[i%user_length]
 		ip := ips[i/user_length]
-		users[i] = CreateUser(username, ip)
+		users[i], err = CreateUser(username, ip)
+		if err != nil {
+			return err
+		}
 	}
 
 	c.Users = users
+	return nil
 }
 func (c *Config) GenerateYaml() (string, error) {
 	var b bytes.Buffer
@@ -153,6 +165,9 @@ func (c *Config) WriteYaml() error {
 		c.Output.Write([]byte(c.Header))
 		c.Output.Write([]byte{'\n'})
 	}
-	c.Output.Write([]byte(c.YamlString))
+	_, err := c.Output.Write([]byte(c.YamlString))
+	if err != nil {
+		return err
+	}
 	return nil
 }
